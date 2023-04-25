@@ -8,7 +8,7 @@ import sys
 
 
 import csv
-import scipy.interpolate as si
+import scipy
 import os
 import matplotlib.pyplot as plt
 
@@ -141,8 +141,8 @@ if __name__ == '__main__':
         import numpy as np
         #插值求耿贝尔系数
         df_gumbal=pd.read_excel(r'gumbal.xlsx')
-        linear_C1 = si.interp1d(df_gumbal['N'], df_gumbal['C1'], kind="linear")
-        linear_C2 = si.interp1d(df_gumbal['N'], df_gumbal['C2'], kind="linear")
+        linear_C1 = scipy.interpolate.interp1d(df_gumbal['N'], df_gumbal['C1'], kind="linear")
+        linear_C2 = scipy.interpolate.interp1d(df_gumbal['N'], df_gumbal['C2'], kind="linear")
 
 
         fivedays_max=[]
