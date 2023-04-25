@@ -8,7 +8,7 @@ import sys
 
 
 import csv
-import scipy as sp
+#import scipy as sp
 import os
 import matplotlib.pyplot as plt
 
