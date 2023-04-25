@@ -1,0 +1,190 @@
+# _*_ coding: utf-8 _*_
+
+import numpy as np
+import pandas as pd
+import streamlit as st
+from PIL import Image
+import sys
+from streamlit import cli as stcli
+import streamlit
+
+import csv
+import scipy.interpolate as si
+import os
+import matplotlib.pyplot as plt
+
+
+#os.environ["KMP_DUPLICATE_LIB_OK"] = "True"
+     
+# _*_ coding:utf-8 _*_
+
+plt.rcParams['font.sans-serif']=['SimHei'] #显示中文
+
+ 
+def read_allkind_file(filename,title_list):
+    #万能文件读取函数v2.0-2023.3.27
+    
+    # 检查文件是否存在
+    if not os.path.exists(filename):
+        raise FileNotFoundError(f"File not found: {filename}")
+    
+    # 根据文件扩展名选择适当的读取函数
+    if filename.endswith('.xls') or filename.endswith('.xlsx'):
+        df = pd.read_excel(filename)
+
+    elif filename.endswith('.csv'):
+        df = pd.read_csv(filename)
+
+    elif filename.endswith('.txt'):
+        
+        with open(filename,encoding='UTF-8') as f:
+            
+            reader = csv.reader(f)
+            
+            for row_num, row in enumerate(reader):
+                
+                if len(row):
+                    row_list = row[0].split('\t')
+                if title_list in row_list:
+                    break
+
+            else:
+            # 如果没有找到关键词行，抛出异常
+                raise ValueError("keyword not found in file")
+        
+        try:
+            df = pd.read_csv(filename, encoding='gbk',sep='\t',skiprows=row_num)#gbk
+            print('跳过头文件行数：',row_num)
+        except:
+            df = pd.read_csv(filename, encoding='utf-8',sep='\t',skiprows=row_num)#gbk
+            print('跳过头文件行数：',row_num)
+
+    else:
+        df = pd.read_table(filename)
+
+    # 打开文件并逐行读取，查找关键词
+    
+    return df
+    
+
+ 
+
+
+def main():
+
+    st.set_page_config(page_icon="🌎", page_title="极限风速计算程序", layout="wide")
+    
+    st.markdown(f'''
+        <style>
+            .reportview-container .main .block-container {{
+            padding-top:0.5rem;
+        }}
+        </style>
+    ''', unsafe_allow_html=True)
+
+    
+    image = Image.open('zghz.png')
+    st.image(image,  caption=None, width=None, use_column_width=False, clamp=False)
+
+    st.title('极限风速计算程序')
+    tab1 = st.tabs(["1 极限风速模块"])
+    
+
+    csv_filepath=st.text_input("输入文件路径,如：D:\1项目\康平朝阳堡风电场“上大下小”资料\风数据处理_auto\CFT1-Exported.txt")
+    title_list=st.text_input('数据标识符，测风数据实际开始的行，通常有：Date/Time,Date & Time Stamp等')
+    #st.info(csv_filepath)
+    
+    surge_run_switch = st.button('读取数据', key=1)
+    st.write("数据读取：done!✔️ ")
+
+    if surge_run_switch:
+        data=read_allkind_file(csv_filepath,title_list)
+        st.write(data)
+        st.info('可供选择的列有：')
+        st.info(list(data.columns))
+
+        
+    var=st.text_input("需要计算的列：")
+    air_local=st.number_input("局地空气密度：")
+    
+
+    run_switch = st.button('开始计算')
+    
+    if run_switch:
+
+        #st.write('触发')
+        data=read_allkind_file(csv_filepath,title_list)
+        col = list(data.columns)
+        #var = st.selectbox("需要计算的列：",
+        #            ("Speed 100 m A [m/s]","11"))
+
+        # 把所有列的类型都转化为数值型，出错的地方填入NaN，再把NaN的地方补0
+        data[var] = data[var].apply(pd.to_numeric, errors='coerce').fillna(0.0)
+        # 至此，object的列（列中存储的是string类型）转成了float
+        # 最后一步，把所有列都转化成float类型，done！
+        df1 = pd.DataFrame(data)#, dtype='float'
+        print('数据抬头查阅：')
+        print(df1)
+        ####################数据质量控制######################
+        print('################数据质量控制###################')
+
+        print('数据时间序列图：')
+        df1[title_list] = pd.to_datetime(df1[title_list]) # date转为时间格式
+        fig = plt.figure()#figsize=(30, 10), dpi=200
+        plt.plot(df1[title_list],df1[var])#
+        plt.xlabel('日期')
+        plt.ylabel('风速（m/s）')
+            #plt.xticks(rotation=90, fontsize=14)
+        plt.show()
+
+
+        #五日雷暴法求极限风速
+        import numpy as np
+        #插值求耿贝尔系数
+        df_gumbal=pd.read_excel(r'gumbal.xlsx')
+        linear_C1 = si.interp1d(df_gumbal['N'], df_gumbal['C1'], kind="linear")
+        linear_C2 = si.interp1d(df_gumbal['N'], df_gumbal['C2'], kind="linear")
+
+
+        fivedays_max=[]
+        for i in range (0,len(df1),720):#720=6个样本（10min)*24h*5days
+            fivedays_max.append(df1.iloc[i:i+721][var].max())
+        aver=np.mean(fivedays_max)
+        std =np.std(fivedays_max)
+        max=np.max(fivedays_max)
+        N=len(fivedays_max)
+        ####
+        st.info('####################################计算结果############################################')
+        st.write('文件:',csv_filepath)
+        st.write('变量：',var)
+        st.write('样本量',N)
+        st.write('最大风速：',max)
+        st.write('平均风速：',df1[var].mean())
+        st.write('标准差: ',np.std(df1[var]))
+        c1 = linear_C1(N)
+        c2 = linear_C2(N)
+        #尺度参数
+        aerfa=c1/std
+        miu=aver-c2/aerfa
+        V50_max=miu-(1/aerfa)*np.log(np.log((50*N)/(50*N-1)))
+        st.write('50年一遇最大风速： %6.2f'%V50_max,'m/s')
+        V50_极大风速=V50_max*1.4
+        st.write('50年一遇极大风速： %6.2f'%V50_极大风速,'m/s')
+
+        #标准空气密度下极限风速
+        air_local=1.22
+        
+    
+        
+        V50_max_standrd_air=np.sqrt(air_local/1.225)*V50_max
+        st.write('标准空气密度下，50年一遇最大风速： %6.2f'%V50_max_standrd_air,'m/s')
+        V50_极大_air_standrd_air=V50_max_standrd_air*1.4
+        st.write('标准空气密度下，50年一遇极大风速： %6.2f'%V50_极大_air_standrd_air,'m/s')
+        st.write("done!😊")
+        #st.image(fig)
+
+
+
+
+if __name__ == '__main__':
+    main()
