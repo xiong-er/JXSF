@@ -10,7 +10,7 @@ import sys
 import csv
 #import scipy as sp
 import os
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 
 #os.environ["KMP_DUPLICATE_LIB_OK"] = "True"
