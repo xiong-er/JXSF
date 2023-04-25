@@ -17,7 +17,7 @@ import os
      
 # _*_ coding:utf-8 _*_
 
-plt.rcParams['font.sans-serif']=['SimHei'] #显示中文
+#plt.rcParams['font.sans-serif']=['SimHei'] #显示中文
 
  
 def read_allkind_file(filename,title_list):
