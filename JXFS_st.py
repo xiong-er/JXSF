@@ -5,8 +5,7 @@ import pandas as pd
 import streamlit as st
 from PIL import Image
 import sys
-from streamlit import cli as stcli
-import streamlit
+
 
 import csv
 import scipy.interpolate as si
@@ -70,7 +69,7 @@ def read_allkind_file(filename,title_list):
  
 
 
-def main():
+if __name__ == '__main__':
 
     st.set_page_config(page_icon="🌎", page_title="极限风速计算程序", layout="wide")
     
@@ -186,5 +185,4 @@ def main():
 
 
 
-if __name__ == '__main__':
-    main()
+
